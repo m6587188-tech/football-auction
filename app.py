@@ -14,15 +14,10 @@ from players import PLAYERS
 
 if not firebase_admin._apps:
 
-    import json
-
-    firebase_dict = json.loads(
-    st.secrets["FIREBASE_KEY"]
-)
-
     cred = credentials.Certificate(
-    firebase_dict
-)
+        "firebase_key.json"
+    )
+
     firebase_admin.initialize_app(
         cred,
         {
@@ -55,7 +50,7 @@ st.set_page_config(
 # =========================
 
 st_autorefresh(
-    interval=1000,
+    interval=2000,
     key="refresh"
 )
 
@@ -84,7 +79,7 @@ st.markdown("""
 
     text-align:center;
 
-    font-size:55px;
+    font-size:50px;
 
     font-weight:bold;
 
@@ -95,16 +90,16 @@ st.markdown("""
 
     background:#0f172a;
 
-    border-radius:20px;
+    border-radius:18px;
 
-    padding:20px;
+    padding:18px;
 
     border:1px solid #334155;
 }
 
 .timer {
 
-    font-size:60px;
+    font-size:55px;
 
     font-weight:bold;
 
@@ -115,6 +110,17 @@ st.markdown("""
 
 .center {
     text-align:center;
+}
+
+.bid-btn button {
+
+    width:100%;
+
+    height:60px;
+
+    font-size:22px;
+
+    border-radius:12px;
 }
 
 </style>
@@ -151,7 +157,7 @@ if auction_data is None:
         "bidding",
 
         "pause_timer":
-        10,
+        15,
 
         "auction_paused":
         False
@@ -209,7 +215,7 @@ def add_log(text):
 
     current_logs.insert(0, text)
 
-    logs_ref.set(current_logs[:20])
+    logs_ref.set(current_logs[:10])
 
 
 def next_player():
@@ -227,7 +233,7 @@ def next_player():
 
     if len(available) == 0:
 
-        st.success("Auction Finished")
+        st.success("🏆 Auction Finished")
 
         st.stop()
 
@@ -268,7 +274,7 @@ def sell_player():
             "pause",
 
             "pause_timer":
-            10
+            15
         })
 
         return
@@ -302,40 +308,8 @@ def sell_player():
         "pause",
 
         "pause_timer":
-        10
+        15
     })
-
-# =========================
-# TIMER LOGIC
-# =========================
-
-if not auction_paused:
-
-    if auction_phase == "bidding":
-
-        if timer > 0:
-
-            auction_ref.update({
-                "timer":
-                timer - 1
-            })
-
-        else:
-
-            sell_player()
-
-    elif auction_phase == "pause":
-
-        if pause_timer > 0:
-
-            auction_ref.update({
-                "pause_timer":
-                pause_timer - 1
-            })
-
-        else:
-
-            next_player()
 
 # =========================
 # SIDEBAR
@@ -351,6 +325,23 @@ view_mode = st.sidebar.selectbox(
 team_name = st.sidebar.text_input(
     "Team Name"
 )
+
+# =========================
+# ADMIN LOGIN
+# =========================
+
+is_admin = False
+
+if view_mode == "Admin":
+
+    password = st.sidebar.text_input(
+        "Password",
+        type="password"
+    )
+
+    if password == ADMIN_PASSWORD:
+
+        is_admin = True
 
 # =========================
 # TEAM CREATE
@@ -372,21 +363,39 @@ if team_name:
         teams = teams_ref.get()
 
 # =========================
-# ADMIN LOGIN
+# TIMER LOGIC
+# ONLY ADMIN CONTROLS TIMER
 # =========================
 
-is_admin = False
+if is_admin:
 
-if view_mode == "Admin":
+    if not auction_paused:
 
-    password = st.sidebar.text_input(
-        "Password",
-        type="password"
-    )
+        if auction_phase == "bidding":
 
-    if password == ADMIN_PASSWORD:
+            if timer > 0:
 
-        is_admin = True
+                auction_ref.update({
+                    "timer":
+                    timer - 1
+                })
+
+            else:
+
+                sell_player()
+
+        elif auction_phase == "pause":
+
+            if pause_timer > 0:
+
+                auction_ref.update({
+                    "pause_timer":
+                    pause_timer - 1
+                })
+
+            else:
+
+                next_player()
 
 # =========================
 # TITLE
@@ -485,6 +494,14 @@ with c3:
         """, unsafe_allow_html=True)
 
 # =========================
+# PAUSED
+# =========================
+
+if auction_paused:
+
+    st.warning("⏸ Auction Paused")
+
+# =========================
 # PLAYER VIEW
 # =========================
 
@@ -532,8 +549,6 @@ if view_mode == "Player":
                             add_log(
                                 f"💸 {team_name} bid {format_money(bid)}"
                             )
-
-                            st.rerun()
 
     st.divider()
 
@@ -593,8 +608,6 @@ if is_admin:
 
             next_player()
 
-            st.rerun()
-
     with a2:
 
         if st.button("⏸ Pause"):
@@ -604,8 +617,6 @@ if is_admin:
                 True
             })
 
-            st.rerun()
-
     with a3:
 
         if st.button("▶ Resume"):
@@ -614,8 +625,6 @@ if is_admin:
                 "auction_paused":
                 False
             })
-
-            st.rerun()
 
     st.divider()
 
@@ -653,6 +662,6 @@ st.divider()
 
 st.subheader("📜 Auction Logs")
 
-for log in logs[:15]:
+for log in logs[:10]:
 
     st.write(log)
