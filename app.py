@@ -14,10 +14,15 @@ from players import PLAYERS
 
 if not firebase_admin._apps:
 
-    cred = credentials.Certificate(
-        "firebase_key.json"
-    )
+    import json
 
+    firebase_dict = json.loads(
+    st.secrets["FIREBASE_KEY"]
+)
+
+    cred = credentials.Certificate(
+    firebase_dict
+)
     firebase_admin.initialize_app(
         cred,
         {
